@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
+using Grapeseed;
 using Microsoft.Extensions.Logging;
 
 namespace Grapevine
@@ -79,7 +81,7 @@ namespace Grapevine
         /// Gets the HttpListener object used by this RestServer object.
         /// </summary>
         /// <value></value>
-        public HttpListener Listener { get; protected internal set; }
+        public IHttpListener Listener { get; protected internal set; }
 
         public override IListenerPrefixCollection Prefixes { get; }
 
@@ -89,6 +91,11 @@ namespace Grapevine
         public override event ServerEventHandler BeforeStopping;
 
         public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger)
+            : this(router, scanner, logger, new HttpListenerWrapper())
+        {
+        }
+
+        public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger, IHttpListener listener)
         {
             if (!HttpListener.IsSupported)
                 throw new PlatformNotSupportedException("Windows Server 2003 (or higher) or Windows XP SP2 (or higher) is required to use instances of this class.");
@@ -102,7 +109,7 @@ namespace Grapevine
 
             RouteScanner.Services = Router.Services;
 
-            Listener = new HttpListener();
+            Listener = listener;
             Prefixes = new ListenerPrefixCollection(Listener.Prefixes);
             RequestHandler = new Thread(RequestListenerAsync);
             RequestHandler.Name = nameof(RequestListenerAsync);
@@ -230,7 +237,7 @@ namespace Grapevine
             {
                 try
                 {
-                    var context = Listener.GetContext();
+                    var context = Listener.GetContextAsync();
                     ThreadPool.QueueUserWorkItem(RequestHandlerAsync, context);
                 }
                 catch (HttpListenerException hl) when (hl.ErrorCode == 995 && (IsStopping || !IsListening))
@@ -284,6 +291,65 @@ namespace Grapevine
             {
                 Logger.LogTrace($"{context.Id} : Routing request {context.Request.Name}");
                 ThreadPool.QueueUserWorkItem(Router.RouteAsync, context);
+            }
+        }
+
+        private sealed class HttpListenerWrapper : IHttpListener
+        {
+            public HttpListenerWrapper()
+            {
+                WrappedInstance = new HttpListener();
+            }
+
+            public HttpListener WrappedInstance
+            {
+                get;
+            }
+
+            public void Dispose()
+            {
+                WrappedInstance.Close();
+            }
+
+            public HttpListenerPrefixCollection Prefixes => WrappedInstance.Prefixes;
+
+            public bool IsListening => WrappedInstance.IsListening;
+
+            public bool IsSupported => HttpListener.IsSupported;
+
+            public void Start()
+            {
+                WrappedInstance.Start();
+            }
+
+            public void Stop()
+            {
+                WrappedInstance.Stop();
+            }
+
+            public void Close()
+            {
+                WrappedInstance.Close();
+            }
+
+            public IAsyncResult BeginGetContext(AsyncCallback callback, object state)
+            {
+                return WrappedInstance.BeginGetContext(callback, state);
+            }
+
+            public HttpListenerContext EndGetContext(IAsyncResult asyncResult)
+            {
+                return WrappedInstance.EndGetContext(asyncResult);
+            }
+
+            public HttpListenerContext GetContext()
+            {
+                return WrappedInstance.GetContext();
+            }
+
+            public Task<HttpListenerContext> GetContextAsync()
+            {
+                return WrappedInstance.GetContextAsync();
             }
         }
     }
