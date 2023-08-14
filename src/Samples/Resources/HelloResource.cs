@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Grapevine;
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +24,7 @@ namespace Samples.Resources
         public async Task HelloWorld(IHttpContext context)
         {
             _logger.LogTrace($"{context.Request.Name} : Hello, world!");
-            await context.Response.SendResponseAsync($"Hello, world! ({Count})");
+            await context.Response.SendResponseAsync($"Hello, the only world we have! ({Count})");
         }
 
         [RestRoute("Get", "/stop", Name = "Server Stop")]
