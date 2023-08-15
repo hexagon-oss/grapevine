@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Grapeseed;
 using Microsoft.Extensions.Logging;
 
 namespace Grapevine
@@ -24,7 +22,7 @@ namespace Grapevine
         {
             HttpContextFactory = (state, token) =>
             {
-                IHttpListenerContext context = state as IHttpListenerContext;
+                HttpListenerContext context = state as HttpListenerContext;
                 if (context == null)
                 {
                     // Could be Task<HttpListenerContext>, but using that result causes some infinite recursion.
@@ -90,7 +88,7 @@ namespace Grapevine
         /// Gets the HttpListener object used by this RestServer object.
         /// </summary>
         /// <value></value>
-        public IHttpListener Listener { get; protected internal set; }
+        public HttpListener Listener { get; protected internal set; }
 
         public override IListenerPrefixCollection Prefixes { get; }
 
@@ -99,12 +97,7 @@ namespace Grapevine
         public override event ServerEventHandler BeforeStarting;
         public override event ServerEventHandler BeforeStopping;
 
-        ////public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger)
-        ////    : this(router, scanner, logger, new HttpListenerWrapper())
-        ////{
-        ////}
-
-        public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger, IHttpListener listener)
+        public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger)
         {
             if (!HttpListener.IsSupported)
                 throw new PlatformNotSupportedException("Windows Server 2003 (or higher) or Windows XP SP2 (or higher) is required to use instances of this class.");
@@ -118,7 +111,7 @@ namespace Grapevine
 
             RouteScanner.Services = Router.Services;
 
-            Listener = listener;
+            Listener = new HttpListener();
             Prefixes = new ListenerPrefixCollection(Listener.Prefixes);
             RequestHandler = new Thread(RequestListenerAsync);
             RequestHandler.Name = nameof(RequestListenerAsync);

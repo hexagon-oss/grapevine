@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -139,8 +139,8 @@ namespace Grapevine
         public static ContentType FindKey(string key)
         {
             var k = key.ToLower();
-            return (_extensions.ContainsKey(k))
-                ? _extensions[k]
+            return _extensions.TryGetValue(k, out var extension)
+                ? extension
                 : ContentType.Binary;
         }
 

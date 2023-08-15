@@ -16,11 +16,6 @@ namespace Grapevine
             get;
         }
 
-        public ListenerPrefixCollection(HttpListenerPrefixCollection prefixes)
-        {
-            PrefixCollection = prefixes;
-        }
-
         public ListenerPrefixCollection(ICollection<string> prefixCollection)
         {
             PrefixCollection = prefixCollection;
