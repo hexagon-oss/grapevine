@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net;
@@ -11,13 +11,19 @@ namespace Grapevine
 
         public bool IsReadOnly => PrefixCollection.IsReadOnly;
 
-        public bool IsSynchronized => PrefixCollection.IsSynchronized;
+        protected ICollection<string> PrefixCollection
+        {
+            get;
+        }
 
-        protected HttpListenerPrefixCollection PrefixCollection;
-
-        public ListenerPrefixCollection (HttpListenerPrefixCollection prefixes)
+        public ListenerPrefixCollection(HttpListenerPrefixCollection prefixes)
         {
             PrefixCollection = prefixes;
+        }
+
+        public ListenerPrefixCollection(ICollection<string> prefixCollection)
+        {
+            PrefixCollection = prefixCollection;
         }
 
         public void Add(string item) => PrefixCollection.Add(item);
@@ -25,8 +31,6 @@ namespace Grapevine
         public void Clear() => PrefixCollection.Clear();
 
         public bool Contains(string item) => PrefixCollection.Contains(item);
-
-        public void CopyTo(Array array, int arrayIndex) => PrefixCollection.CopyTo(array, arrayIndex);
 
         public void CopyTo(string[] array, int arrayIndex) => PrefixCollection.CopyTo(array, arrayIndex);
 

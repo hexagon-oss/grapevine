@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Grapeseed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -48,6 +49,11 @@ namespace Grapevine
             Services.AddSingleton<IRouter, Router>();
             Services.AddSingleton<IRouteScanner, RouteScanner>();
             Services.AddTransient<IContentFolder, ContentFolder>();
+#if NET6_0_OR_GREATER
+            Services.AddTransient<IHttpListener, ManagedHttpListenerWrapper>();
+#else
+            Services.AddTransient<IHttpListener, HttpListenerWrapper>();
+#endif
 
             ConfigureServices?.Invoke(Services);
 

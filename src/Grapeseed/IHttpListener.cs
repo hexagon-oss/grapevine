@@ -10,7 +10,7 @@ namespace Grapeseed
     /// </summary>
     public interface IHttpListener : IDisposable
     {
-        HttpListenerPrefixCollection Prefixes { get; }
+        ICollection<string> Prefixes { get; }
 
         bool IsListening { get; }
 
@@ -23,10 +23,8 @@ namespace Grapeseed
 
         IAsyncResult BeginGetContext(AsyncCallback callback, object state);
 
-        System.Net.HttpListenerContext EndGetContext(IAsyncResult asyncResult);
+        IHttpListenerContext EndGetContext(IAsyncResult asyncResult);
 
-        System.Net.HttpListenerContext GetContext();
-
-        System.Threading.Tasks.Task<System.Net.HttpListenerContext> GetContextAsync();
+        IHttpListenerContext GetContext();
     }
 }

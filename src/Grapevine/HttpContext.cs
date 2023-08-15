@@ -1,13 +1,12 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Threading;
+using Grapeseed;
 
 namespace Grapevine
 {
     public class HttpContext : IHttpContext
     {
-        public HttpListenerContext Advanced { get; }
-
         public CancellationToken CancellationToken { get; }
 
         public string Id { get; } = Guid.NewGuid().ToString();
@@ -22,13 +21,12 @@ namespace Grapevine
 
         public IServiceProvider Services { get; set; }
 
-        internal HttpContext(HttpListenerContext context, CancellationToken token)
+        internal HttpContext(IHttpListenerContext context, CancellationToken token)
         {
-            Advanced = context;
             CancellationToken = token;
 
             // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Encoding
-            var acceptEncoding = context.Request.Headers.GetValue<string>("Accept-Encoding", string.Empty);
+            var acceptEncoding = context.GetAcceptEncoding();
             var identityForbidden = (acceptEncoding.Contains("identity;q=0") || acceptEncoding.Contains("*;q=0"));
 
             Request = new HttpRequest(context.Request);

@@ -64,4 +64,10 @@
     <ProjectReference Include="..\Grapeseed\Grapeseed.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="SpaceWizards.HttpListener">
+      <Version>0.1.0</Version>
+    </PackageReference>
+  </ItemGroup>
+
 </Project>

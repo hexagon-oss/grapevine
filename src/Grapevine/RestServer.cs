@@ -22,7 +22,16 @@ namespace Grapevine
 
         public ServerOptions Options { get; } = new ServerOptions
         {
-            HttpContextFactory = (state, token) => new HttpContext(state as HttpListenerContext, token)
+            HttpContextFactory = (state, token) =>
+            {
+                IHttpListenerContext context = state as IHttpListenerContext;
+                if (context == null)
+                {
+                    // Could be Task<HttpListenerContext>, but using that result causes some infinite recursion.
+                    throw new InvalidOperationException($"Result is not of expected type {nameof(HttpListenerContext)}, but {state.GetType().Name}");
+                }
+                return new HttpContext(context, token);
+            }
         };
 
         public virtual IListenerPrefixCollection Prefixes { get; }
@@ -90,10 +99,10 @@ namespace Grapevine
         public override event ServerEventHandler BeforeStarting;
         public override event ServerEventHandler BeforeStopping;
 
-        public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger)
-            : this(router, scanner, logger, new HttpListenerWrapper())
-        {
-        }
+        ////public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger)
+        ////    : this(router, scanner, logger, new HttpListenerWrapper())
+        ////{
+        ////}
 
         public RestServer(IRouter router, IRouteScanner scanner, ILogger<IRestServer> logger, IHttpListener listener)
         {
@@ -237,7 +246,7 @@ namespace Grapevine
             {
                 try
                 {
-                    var context = Listener.GetContextAsync();
+                    var context = Listener.GetContext();
                     ThreadPool.QueueUserWorkItem(RequestHandlerAsync, context);
                 }
                 catch (HttpListenerException hl) when (hl.ErrorCode == 995 && (IsStopping || !IsListening))
@@ -291,65 +300,6 @@ namespace Grapevine
             {
                 Logger.LogTrace($"{context.Id} : Routing request {context.Request.Name}");
                 ThreadPool.QueueUserWorkItem(Router.RouteAsync, context);
-            }
-        }
-
-        private sealed class HttpListenerWrapper : IHttpListener
-        {
-            public HttpListenerWrapper()
-            {
-                WrappedInstance = new HttpListener();
-            }
-
-            public HttpListener WrappedInstance
-            {
-                get;
-            }
-
-            public void Dispose()
-            {
-                WrappedInstance.Close();
-            }
-
-            public HttpListenerPrefixCollection Prefixes => WrappedInstance.Prefixes;
-
-            public bool IsListening => WrappedInstance.IsListening;
-
-            public bool IsSupported => HttpListener.IsSupported;
-
-            public void Start()
-            {
-                WrappedInstance.Start();
-            }
-
-            public void Stop()
-            {
-                WrappedInstance.Stop();
-            }
-
-            public void Close()
-            {
-                WrappedInstance.Close();
-            }
-
-            public IAsyncResult BeginGetContext(AsyncCallback callback, object state)
-            {
-                return WrappedInstance.BeginGetContext(callback, state);
-            }
-
-            public HttpListenerContext EndGetContext(IAsyncResult asyncResult)
-            {
-                return WrappedInstance.EndGetContext(asyncResult);
-            }
-
-            public HttpListenerContext GetContext()
-            {
-                return WrappedInstance.GetContext();
-            }
-
-            public Task<HttpListenerContext> GetContextAsync()
-            {
-                return WrappedInstance.GetContextAsync();
             }
         }
     }

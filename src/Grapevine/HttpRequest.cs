@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
@@ -57,7 +57,7 @@ namespace Grapevine
 
         public string[] UserLanguages => Advanced.UserLanguages;
 
-        public HttpRequest(HttpListenerRequest request)
+        public HttpRequest(IHttpListenerRequest request)
         {
             Advanced = request;
             Endpoint = request.Url.AbsolutePath.TrimEnd('/');
