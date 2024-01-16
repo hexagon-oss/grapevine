@@ -67,6 +67,8 @@ namespace Grapevine
         /// </summary>
         /// <param name="state"></param>
         void RouteAsync(object state);
+
+        Task HandleErrorAsync(IHttpContext context, Exception e = null);
     }
 
     public static partial class IRouterExtensions

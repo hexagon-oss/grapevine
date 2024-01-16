@@ -286,6 +286,8 @@ namespace Grapevine
             catch (Exception e)
             {
                 Logger.LogError(e, $"{context.Id} An exception occurred while routing request {context.Request.Name}");
+                context.Response.StatusCode = HttpStatusCode.InternalServerError;
+                await Router.HandleErrorAsync(context, e);
             }
 
             // 4. Optionally route request

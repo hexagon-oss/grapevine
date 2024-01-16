@@ -51,6 +51,11 @@ namespace Grapevine
             HeaderConditions[header] = pattern;
             return this;
         }
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 
     public class Route : RouteBase, IRoute

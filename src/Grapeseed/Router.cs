@@ -82,7 +82,7 @@ namespace Grapevine
         /// <param name="context"></param>
         /// <param name="e"></param>
         /// <returns></returns>
-        protected internal async Task HandleErrorAsync(IHttpContext context, Exception e = null)
+        public async Task HandleErrorAsync(IHttpContext context, Exception e = null)
         {
             if (context.WasRespondedTo) return;
 
@@ -214,7 +214,7 @@ namespace Grapevine
         /// <returns>IEnumerable&lt;IRoute&gt;</returns>
         public virtual IEnumerable<IRoute> RoutesFor(IHttpContext context)
         {
-            foreach (var route in RegisteredRoutes.Where(r => r.IsMatch(context) && r.Enabled)) yield return route;
+            return RegisteredRoutes.Where(r => r.IsMatch(context) && r.Enabled);
         }
     }
 }
