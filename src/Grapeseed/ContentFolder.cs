@@ -15,13 +15,9 @@ namespace Grapevine
         public static Func<IHttpContext, Task> DefaultFileNotFoundHandler { get; set; } = async (context) =>
         {
             context.Response.StatusCode = HttpStatusCode.NotFound;
-            var content = $"File Not Found: {context.Request.Endpoint}";
+            var content = $"File not found: {context.Request.Endpoint}";
             await context.Response.SendResponseAsync(content);
         };
-
-        public ConcurrentDictionary<string, string> DirectoryMapping { get; protected set; }
-
-        protected FileSystemWatcher Watcher;
 
         public abstract string IndexFileName { get; set; }
 
@@ -31,46 +27,32 @@ namespace Grapevine
 
         public Func<IHttpContext, Task> FileNotFoundHandler { get; set; } = DefaultFileNotFoundHandler;
 
-        public IList<string> DirectoryListing => DirectoryMapping.Values.ToList();
-
-        public virtual void AddToDirectoryListing(string fullPath)
-        {
-            if (DirectoryMapping == null)
-                DirectoryMapping = new ConcurrentDictionary<string, string>();
-
-            DirectoryMapping[CreateDirectoryListingKey(fullPath)] = fullPath;
-
-            if (fullPath.EndsWith($"{Path.DirectorySeparatorChar}{IndexFileName}", StringComparison.CurrentCultureIgnoreCase))
-                DirectoryMapping[CreateDirectoryListingKey(fullPath.Replace($"{Path.DirectorySeparatorChar}{IndexFileName}", ""))] = fullPath;
-        }
-
         public virtual string CreateDirectoryListingKey(string item)
         {
             return $"{Prefix}{item.Replace(FolderPath, string.Empty).Replace(@"\", "/")}";
         }
 
-        public virtual void PopulateDirectoryListing()
+        public virtual string GetFullPathFromUrlPath(string urlPath)
         {
-            if (DirectoryMapping?.Count > 0) return;
+            // No going backwards
+            if (urlPath.Contains("/../") || urlPath.StartsWith("."))
+            {
+                throw new InvalidOperationException($"Not a valid path: {urlPath}");
+            }
 
-            Directory.GetFiles(FolderPath, "*", SearchOption.AllDirectories)
-                .ToList()
-                .ForEach(AddToDirectoryListing);
-        }
+            string fullPath = urlPath;
+            if (!string.IsNullOrWhiteSpace(Prefix))
+            {
+                fullPath = fullPath.Replace(Prefix, string.Empty);
+            }
 
-        public virtual void RemoveFromDirectoryListing(string fullPath)
-        {
-            if (DirectoryMapping == null) return;
-
-            DirectoryMapping.Where(x => x.Value == fullPath)
-                .ToList()
-                .ForEach(pair => DirectoryMapping.TryRemove(pair.Key, out string key));
-        }
-
-        public virtual void RenameInDirectoryListing(string oldFullPath, string newFullPath)
-        {
-            RemoveFromDirectoryListing(oldFullPath);
-            AddToDirectoryListing(newFullPath);
+            fullPath = Path.Combine(FolderPath, fullPath);
+            FileInfo fi = new FileInfo(fullPath);
+            if (fi.Attributes.HasFlag(FileAttributes.Directory))
+            {
+                fullPath = Path.Combine(fullPath, IndexFileName);
+            }
+            return fullPath;
         }
 
         public abstract Task SendFileAsync(IHttpContext context);
@@ -110,23 +92,11 @@ namespace Grapevine
                 var path = Path.GetFullPath(value);
                 if (_path == path) return;
 
-                if (!Directory.Exists(path)) path = Directory.CreateDirectory(path).FullName;
-                _path = path;
-                DirectoryMapping?.Clear();
-
-                Watcher?.Dispose();
-                Watcher = new FileSystemWatcher
+                if (!Directory.Exists(path))
                 {
-                    Path = _path,
-                    Filter = "*",
-                    EnableRaisingEvents = true,
-                    IncludeSubdirectories = true,
-                    NotifyFilter = NotifyFilters.FileName
-                };
-
-                Watcher.Created += (sender, args) => { AddToDirectoryListing(args.FullPath); };
-                Watcher.Deleted += (sender, args) => { RemoveFromDirectoryListing(args.FullPath); };
-                Watcher.Renamed += (sender, args) => { RenameInDirectoryListing(args.OldFullPath, args.FullPath); };
+                    path = Directory.CreateDirectory(path).FullName;
+                }
+                _path = path;
             }
         }
 
@@ -137,7 +107,6 @@ namespace Grapevine
             {
                 if (string.IsNullOrWhiteSpace(value) || _indexFileName.Equals(value, StringComparison.CurrentCultureIgnoreCase)) return;
                 _indexFileName = value;
-                DirectoryMapping?.Clear();
             }
         }
 
@@ -153,13 +122,11 @@ namespace Grapevine
                 if (_prefix.Equals(prefix, StringComparison.CurrentCultureIgnoreCase)) return;
 
                 _prefix = prefix;
-                DirectoryMapping?.Clear();
             }
         }
 
         public void Dispose()
         {
-            Watcher?.Dispose();
         }
 
         public override async Task SendFileAsync(IHttpContext context)
@@ -169,9 +136,8 @@ namespace Grapevine
 
         public override async Task SendFileAsync(IHttpContext context, string filename)
         {
-            PopulateDirectoryListing();
-
-            if (DirectoryMapping.TryGetValue(context.Request.Endpoint, out var filepath))
+            var filepath = GetFullPathFromUrlPath(context.Request.Endpoint);
+            if (File.Exists(filepath))
             {
                 context.Response.StatusCode = HttpStatusCode.Ok;
 
@@ -180,24 +146,28 @@ namespace Grapevine
 
                 if (context.Request.Headers.AllKeys.Contains("If-Modified-Since") && context.Request.Headers["If-Modified-Since"].Equals(lastModified))
                 {
-                    await context.Response.SendResponseAsync(HttpStatusCode.NotModified).ConfigureAwait(false);
-                    return;
-                }
+                        await context.Response.SendResponseAsync(HttpStatusCode.NotModified).ConfigureAwait(false);
+                        return;
+                    }
 
                 if (!string.IsNullOrWhiteSpace(filename))
                     context.Response.AddHeader("Content-Disposition", $"attachment; filename=\"{filename}\"");
 
                 context.Response.ContentType = ContentType.FindKey(Path.GetExtension(filepath).TrimStart('.').ToLower());
 
-                using (var stream = new FileStream(filepath, FileMode.Open))
+                using (var stream = new FileStream(filepath, FileMode.Open, FileAccess.Read))
                 {
                     await context.Response.SendResponseAsync(stream);
                 }
             }
-
             // File not found, but should have been based on the path info
             else if (!string.IsNullOrEmpty(Prefix) && context.Request.Endpoint.StartsWith(Prefix, StringComparison.CurrentCultureIgnoreCase))
             {
+                context.Response.StatusCode = HttpStatusCode.NotFound;
+            }
+            else if (!string.IsNullOrEmpty(Path.GetExtension(context.Request.Endpoint)))
+            {
+                // Also if this looks like a file name and the file doesn't exist, show a 404 instead of a 501 (route not found)
                 context.Response.StatusCode = HttpStatusCode.NotFound;
             }
         }

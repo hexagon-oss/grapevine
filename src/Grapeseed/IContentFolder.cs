@@ -7,12 +7,6 @@ namespace Grapevine
     public interface IContentFolder
     {
         /// <summary>
-        /// Returns a list of relative paths for all files and folders in the directory
-        /// </summary>
-        /// <value></value>
-        IList<string> DirectoryListing { get; }
-
-        /// <summary>
         /// Gets or sets the default file to return when a directory is requested
         /// </summary>
         string IndexFileName { get; set; }
