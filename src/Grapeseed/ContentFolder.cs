@@ -46,6 +46,13 @@ namespace Grapevine
                 fullPath = fullPath.Replace(Prefix, string.Empty);
             }
 
+            // the url starts with a /, which is the linux root path indicator., but the second argument of Path.Combine must not be
+            // such a root path indicator for the method to work correctly.
+            while (fullPath.StartsWith("/"))
+            {
+                fullPath = fullPath.Remove(0, 1);
+            }
+
             fullPath = Path.Combine(FolderPath, fullPath);
             FileInfo fi = new FileInfo(fullPath);
             if (fi.Attributes.HasFlag(FileAttributes.Directory))
