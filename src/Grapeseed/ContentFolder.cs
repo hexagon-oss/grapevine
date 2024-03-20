@@ -153,9 +153,9 @@ namespace Grapevine
 
                 if (context.Request.Headers.AllKeys.Contains("If-Modified-Since") && context.Request.Headers["If-Modified-Since"].Equals(lastModified))
                 {
-                        await context.Response.SendResponseAsync(HttpStatusCode.NotModified).ConfigureAwait(false);
-                        return;
-                    }
+                    await context.Response.SendResponseAsync(HttpStatusCode.NotModified).ConfigureAwait(false);
+                    return;
+                }
 
                 if (!string.IsNullOrWhiteSpace(filename))
                     context.Response.AddHeader("Content-Disposition", $"attachment; filename=\"{filename}\"");
